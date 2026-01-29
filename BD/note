@@ -1,0 +1,31 @@
+
+
+Après avoir exécuté ce script, on a :
+
+suppliers : table pour gérer les fournisseurs (liste déroulante SA).
+
+customers : table pour les clients (pour EA plus tard).
+
+sa_families : 3 familles de base, pourcentage modifiable.
+
+sa_declarations enrichie avec :
+
+supplier_id → suppliers
+
+family_id → sa_families
+
+scrap_quantity_ton → droit de déchet (en tonne)
+
+fx_rate → taux de change
+
+amount_ds → montant en devise société
+
+Et les anciennes colonnes :
+
+sa_number → sera SA + 6 chiffres
+
+quantity_initial → quantité facturée en TONNE
+
+currency_code → devise de la facture
+
+invoice_amount → si tu veux, on peut la renommer ou la garder (si elle existe déjà sous un autre nom, on l’ajustera au prochain step backend).
