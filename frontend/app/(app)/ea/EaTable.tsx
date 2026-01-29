@@ -15,6 +15,8 @@ export type EaItem = {
   product_ref: string | null;
   total_quantity: number;
   quantity_unit: string;
+  // optional scrap percent (from family) for dechet calculation
+  scrap_percent?: number | null;
 };
 
 function getStatusLabel(status: EaStatus) {
@@ -78,6 +80,9 @@ export function EaTable({ items }: { items: EaItem[] }) {
               Quantité
             </th>
             <th className="px-4 py-2 text-left font-medium text-slate-600">
+              Déchet (est.)
+            </th>
+            <th className="px-4 py-2 text-left font-medium text-slate-600">
               Statut
             </th>
           </tr>
@@ -107,6 +112,21 @@ export function EaTable({ items }: { items: EaItem[] }) {
               <td className="px-4 py-2 text-slate-700">
                 {ea.total_quantity.toLocaleString('fr-FR')}{' '}
                 {ea.quantity_unit}
+              </td>
+              <td className="px-4 py-2 text-slate-700">
+                {ea.scrap_percent != null && ea.scrap_percent > 0 ? (
+                  <span>
+                    {Number(
+                      (
+                        ea.total_quantity * (ea.scrap_percent / 100) /
+                        (1 - ea.scrap_percent / 100)
+                      ).toFixed(3),
+                    ).toLocaleString('fr-FR', { maximumFractionDigits: 3 })}{' '}
+                    {ea.quantity_unit}
+                  </span>
+                ) : (
+                  <span className="text-slate-400 text-xs">-</span>
+                )}
               </td>
               <td className="px-4 py-2">
                 <span

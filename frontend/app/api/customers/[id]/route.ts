@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export async function PATCH(
   req: NextRequest,
-  context: { params: { id: string } },
+  context: any,
 ) {
   const id = context.params?.id;
 
@@ -45,7 +45,7 @@ export async function PATCH(
 
 export async function DELETE(
   _req: NextRequest,
-  context: { params: { id: string } },
+  context: any,
 ) {
   const id = context.params?.id;
 

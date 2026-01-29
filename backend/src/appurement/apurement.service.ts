@@ -51,14 +51,17 @@ export class ApurementService {
       throw new BadRequestException('Quantity must be positive');
     }
 
-    // Coefficient famille : 1 + (scrap_percent / 100)
     const scrapPercent = sa.family
       ? Number(sa.family.scrap_percent ?? 0)
       : 0;
 
-    const coef = 1 + scrapPercent / 100; // ex: 1.05
+    const t = scrapPercent / 100;
+    if (t >= 1) {
+      throw new BadRequestException('Invalid scrap percent for SA family');
+    }
 
-    // Quantité réellement consommée sur la SA
+    // Quantité SA consommée en billettes = quantité EA nette / (1 - t)
+    const coef = 1 / (1 - t); // ex : 1 / 0.95 = 1.052631...
     const consumedOnSa = Number((rawQuantity * coef).toFixed(3));
 
     // Vérifier qu'on ne dépasse pas la quantité initiale SA

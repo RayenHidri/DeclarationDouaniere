@@ -1,4 +1,4 @@
-// app/api/sa/[id]/route.ts
+// app/api/sa/for-ea/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
@@ -11,10 +11,7 @@ export async function GET(
   const id = context.params?.id;
 
   if (!id || id === 'undefined' || id === 'null') {
-    return NextResponse.json(
-      { message: 'Invalid SA id in route' },
-      { status: 400 },
-    );
+    return NextResponse.json({ message: 'Invalid SA id in route' }, { status: 400 });
   }
 
   const cookieStore = await cookies();
@@ -24,10 +21,11 @@ export async function GET(
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const backendRes = await fetch(`${API_URL}/sa/${id}`, {
+  const backendRes = await fetch(`${API_URL}/sa/for-ea/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+    cache: 'no-store',
   });
 
   const text = await backendRes.text();

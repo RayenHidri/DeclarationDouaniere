@@ -9,6 +9,8 @@ import { EaModule } from './ea/ea.module';
 import { ApurementModule } from './appurement/apurement.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { CustomersModule } from './customers/customers.module';
+import { ArticlesModule } from './articles/articles.module';
+import { ExportModule } from './export/export.module';
 
 @Module({
   imports: [
@@ -24,7 +26,11 @@ import { CustomersModule } from './customers/customers.module';
     EaModule,
     ApurementModule,
     SuppliersModule,
-    CustomersModule
+    CustomersModule,
+    // Articles (SA family articles)
+    ArticlesModule,
+    // Export endpoints for SA/EA Excel
+    ExportModule,
   ],
 })
 export class AppModule {}

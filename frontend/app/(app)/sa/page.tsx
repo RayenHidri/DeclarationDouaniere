@@ -2,6 +2,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SaTable, SaItem } from './SaTable';
+import SaControls from './SaControls';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -89,12 +90,11 @@ export default async function SaPage() {
           </p>
         </div>
 
-        <a
-          href="/sa/new"
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Nouvelle SA
-        </a>
+        <div>
+          {/* Controls moved to client component */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <SaControls />
+        </div>
       </div>
 
       <SaTable items={items} />

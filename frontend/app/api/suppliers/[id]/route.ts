@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-type Params = { params: { id: string } };
+type Params = any;
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = params;

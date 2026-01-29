@@ -2,6 +2,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { EaTable, EaItem } from './EaTable';
+import EaControls from './EaControls';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -52,6 +53,7 @@ async function loadEa(): Promise<EaItem[]> {
       product_ref: e.product_ref ?? null,
       total_quantity: Number(e.total_quantity ?? 0),
       quantity_unit: e.quantity_unit,
+      scrap_percent: e.scrap_percent != null ? Number(e.scrap_percent) : null,
     };
   });
 }
@@ -69,12 +71,9 @@ export default async function EaPage() {
           </p>
         </div>
 
-        <a
-          href="/ea/new"
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Nouvelle EA
-        </a>
+        <div className="flex items-center gap-2">
+          <EaControls />
+        </div>
       </div>
 
       <EaTable items={items} />

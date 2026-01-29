@@ -1,7 +1,7 @@
 // app/(app)/ea/new/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 type EligibleSa = {
@@ -41,6 +41,16 @@ export default function EaNewPage() {
   // Référentiel clients
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
+
+  // Familles & articles (nouveau)
+  const [families, setFamilies] = useState<any[]>([]);
+  const [articles, setArticles] = useState<any[]>([]);
+  const [familyId, setFamilyId] = useState('');
+  const [productId, setProductId] = useState('');
+  const [loadingArticles, setLoadingArticles] = useState(false);
+  const [articleSearch, setArticleSearch] = useState('');
+  // cache local en mémoire par famille -> évite rechargements inutiles
+  const articlesCacheRef = useRef<Map<string, any[]>>(new Map());
 
   // SA éligibles pour apurement auto
   const [eligibleSa, setEligibleSa] = useState<EligibleSa[]>([]);
@@ -130,6 +140,63 @@ export default function EaNewPage() {
     loadSa();
   }, []);
 
+  // Charger familles (pour produit -> calcul déchet)
+  useEffect(() => {
+    const loadFamilies = async () => {
+      try {
+        const res = await fetch('/api/sa-families', { cache: 'no-store' });
+        const data = await res.json().catch(() => []);
+        if (!res.ok) throw new Error(data?.message || 'Erreur chargement familles');
+        setFamilies(data || []);
+      } catch (err: any) {
+        console.error('loadFamilies error:', err);
+      }
+    };
+
+    loadFamilies();
+  }, []);
+
+  // Charger articles quand on choisit une famille
+  useEffect(() => {
+    const loadArticles = async () => {
+      if (!familyId) {
+        setArticles([]);
+        setProductId('');
+        return;
+      }
+
+      // reset local search + produit sélectionné lors du changement de famille
+      setArticleSearch('');
+      setProductId('');
+      setProductRef('');
+      setProductDesc('');
+
+      // si on a déjà chargé cette famille, on utilise le cache local
+      const cached = articlesCacheRef.current.get(familyId);
+      if (cached) {
+        setArticles(cached);
+        return;
+      }
+
+      try {
+        setLoadingArticles(true);
+        const res = await fetch(`/api/articles?family_id=${familyId}`, { cache: 'no-store' });
+        const data = await res.json().catch(() => []);
+        if (!res.ok) throw new Error(data?.message || 'Erreur chargement articles');
+        const list = data || [];
+        articlesCacheRef.current.set(familyId, list);
+        setArticles(list);
+      } catch (err: any) {
+        console.error('loadArticles error:', err);
+        setArticles([]);
+      } finally {
+        setLoadingArticles(false);
+      }
+    };
+
+    loadArticles();
+  }, [familyId]);
+
   // Quand on choisit une SA et qu'on a saisi une quantité totale EA,
   // on pré-remplit la quantité liée avec la quantité totale
   useEffect(() => {
@@ -137,6 +204,44 @@ export default function EaNewPage() {
       setLinkedQuantity(totalQuantity);
     }
   }, [linkedSaId, totalQuantity]);
+
+  // Quand on choisit une SA, on appelle l'endpoint backend qui fournit
+  // les valeurs pré-remplies pour créer l'EA à partir de la SA (famille,
+  // description, quantité max exportable, unité, etc.). On ne force
+  // pas le produit sélectionné (productId) car la liste d'articles peut
+  // ne pas contenir le produit suggéré; on remplit le champ texte.
+  useEffect(() => {
+    const loadSaForEa = async () => {
+      if (!linkedSaId) return;
+
+      try {
+        const res = await fetch(`/api/sa/for-ea/${linkedSaId}`, { cache: 'no-store' });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          console.warn('/api/sa/for-ea error', res.status, data);
+          return;
+        }
+
+        // Pré-remplissage non-invasif : n'écrase pas si utilisateur a déjà changé
+        if (data.family_id && !familyId) setFamilyId(String(data.family_id));
+        if (data.suggested_product_ref && !productRef) setProductRef(data.suggested_product_ref);
+        if (data.suggested_product_desc && !productDesc) setProductDesc(data.suggested_product_desc);
+        if (data.description && !productDesc) setProductDesc(data.description);
+        if (data.quantity_unit) setQuantityUnit(data.quantity_unit);
+
+        // Quantités : on propose la quantité max exportable pour la SA
+        if (typeof data.max_export_quantity === 'number') {
+          setLinkedQuantity(data.max_export_quantity);
+          if (totalQuantity === '') setTotalQuantity(data.max_export_quantity);
+        }
+      } catch (err: any) {
+        console.error('loadSaForEa error:', err);
+      }
+    };
+
+    loadSaForEa();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedSaId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +262,16 @@ export default function EaNewPage() {
     }
     if (totalQuantity === '' || totalQuantity <= 0) {
       setErrorMsg('La quantité totale doit être un nombre positif.');
+      return;
+    }
+
+    // produit & famille obligatoires
+    if (!familyId) {
+      setErrorMsg('La famille est obligatoire.');
+      return;
+    }
+    if (!productId) {
+      setErrorMsg('L\'article est obligatoire.');
       return;
     }
 
@@ -182,8 +297,6 @@ export default function EaNewPage() {
     }
 
     // Payload aligné avec le nouveau DTO :
-    // - customer_id (obligatoire)
-    // - customer_name en plus (pratique / fallback)
     const payload: any = {
       ea_number: eaNumber.trim(),
       export_date: exportDate,
@@ -194,6 +307,8 @@ export default function EaNewPage() {
       product_desc: productDesc || null,
       total_quantity: Number(totalQuantity),
       quantity_unit: quantityUnit,
+      family_id: familyId,
+      product_id: productId,
     };
 
     // Lien SA optionnel : apurement auto
@@ -234,6 +349,25 @@ export default function EaNewPage() {
       setSubmitting(false);
     }
   };
+
+  // déchet théorique pour cette EA = total_quantity * (t / (1 - t))
+  const selectedFamily = families.find((f) => f.id === familyId);
+  const scrapPercent = selectedFamily?.scrap_percent ?? 0;
+  const t = scrapPercent / 100;
+  const dechetPreview =
+    typeof totalQuantity === 'number' && t > 0 && t < 1
+      ? Number((Number(totalQuantity) * (t / (1 - t))).toFixed(3))
+      : 0;
+
+  // Filtrage local des articles par référence ou libellé (recherche instantanée)
+  const filteredArticles = articles.filter((a) => {
+    if (!articleSearch) return true;
+    const s = articleSearch.toLowerCase();
+    return (
+      String(a.product_ref ?? '').toLowerCase().includes(s) ||
+      String(a.label ?? '').toLowerCase().includes(s)
+    );
+  });
 
   // Quand on change de client dans la liste déroulante, on met à jour id + nom
   const handleChangeCustomer = (value: string) => {
@@ -315,14 +449,59 @@ export default function EaNewPage() {
               />
             </label>
 
+            {/* Famille & article */}
             <label className="flex flex-col gap-1 text-sm">
-              Référence produit
-              <input
+              Famille
+              <select
                 className="rounded-md border px-2 py-1 text-sm"
-                value={productRef}
-                onChange={(e) => setProductRef(e.target.value)}
-                placeholder="PRD-001"
+                value={familyId}
+                onChange={(e) => setFamilyId(e.target.value)}
+              >
+                <option value="">-- Sélectionner --</option>
+                {families.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label} ({f.scrap_percent}%)
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              Article
+              <input
+                className="mb-2 rounded-md border px-2 py-1 text-sm"
+                placeholder="Rechercher par référence ou libellé (ex: REF123)"
+                value={articleSearch}
+                onChange={(e) => setArticleSearch(e.target.value)}
               />
+
+              {loadingArticles ? (
+                <div className="text-xs text-gray-500">Chargement des articles…</div>
+              ) : null}
+
+              {!loadingArticles && articles.length === 0 ? (
+                <div className="text-xs text-gray-500">Aucun article pour cette famille.</div>
+              ) : null}
+
+              <select
+                className="rounded-md border px-2 py-1 text-sm"
+                value={productId}
+                onChange={(e) => {
+                  setProductId(e.target.value);
+                  const art = articles.find((a) => String(a.id) === e.target.value);
+                  setProductRef(art?.product_ref ?? '');
+                  setProductDesc(art?.label ?? '');
+                }}
+              >
+                <option value="">-- Sélectionner --</option>
+                {filteredArticles.map((a) => (
+                  <option key={a.id} value={String(a.id)}>
+                    {a.product_ref} • {a.label}
+                  </option>
+                ))}
+              </select>
+
+              <div className="text-[11px] text-gray-500 mt-1">Astuce: utilise la recherche ci-dessus pour trouver rapidement par référence.</div>
             </label>
 
             <label className="flex flex-col gap-1 text-sm">
@@ -363,6 +542,18 @@ export default function EaNewPage() {
               onChange={(e) => setProductDesc(e.target.value)}
             />
           </label>
+
+          {/* Aperçu du déchet (nouveau) */}
+          <div className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-700">
+            <div className="font-semibold mb-1">Aperçu droit de déchet</div>
+            <div>
+              Famille : <strong>{selectedFamily ? `${selectedFamily.label} (${scrapPercent} %)` : '—'}</strong>
+            </div>
+            <div>Formule : déchet = Qté EA × (t / (1 - t))</div>
+            <div className="mt-1">
+              Estimation déchet : <strong>{dechetPreview.toLocaleString('fr-FR', { maximumFractionDigits: 3 })} T</strong>
+            </div>
+          </div>
         </section>
 
         {/* Bloc Lien SA (optionnel) */}

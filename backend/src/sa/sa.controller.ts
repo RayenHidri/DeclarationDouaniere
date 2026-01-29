@@ -33,6 +33,11 @@ export class SaController {
     return this.saService.getEligibleForAllocation();
   }
 
+  @Get('for-ea/:id')
+  async getForEa(@Param('id') id: string) {
+    return this.saService.getForEa(id);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     // on utilise la version mappée (avec scrap, montant DS, etc.)

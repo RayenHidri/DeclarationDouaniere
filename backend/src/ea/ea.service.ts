@@ -33,6 +33,48 @@ export class EaService {
     return ea;
   }
 
+  async exportExcel(query: any): Promise<Buffer> {
+    const where: any = {};
+    if (query.customer_name) where.customer_name = query.customer_name;
+
+    const items = await this.eaRepo.find({ where, order: { export_date: 'DESC' } });
+
+    const ExcelJS = require('exceljs');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('EA');
+
+    ws.addRow([
+      'id',
+      'ea_number',
+      'export_date',
+      'customer_name',
+      'destination_country',
+      'product_ref',
+      'product_desc',
+      'total_quantity',
+      'quantity_unit',
+      'status',
+    ]);
+
+    items.forEach((ea) => {
+      ws.addRow([
+        ea.id,
+        ea.ea_number,
+        ea.export_date,
+        ea.customer_name,
+        ea.destination_country,
+        ea.product_ref,
+        ea.product_desc,
+        Number(ea.total_quantity),
+        ea.quantity_unit,
+        ea.status,
+      ]);
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    return Buffer.from(buf);
+  }
+
   /**
    * Création d'une EA.
    * - Création simple d'EA
@@ -46,8 +88,10 @@ export class EaService {
       );
     }
 
+    const eaNumber = this.normalizeEaNumber(dto.ea_number);
+
     const ea = this.eaRepo.create({
-      ea_number: dto.ea_number,
+      ea_number: eaNumber,
       regime_code: dto.regime_code ?? '362',
       export_date: dto.export_date,
       status: 'SUBMITTED',
@@ -174,5 +218,25 @@ export class EaService {
     }
 
     await this.eaRepo.delete(id);
+  }
+
+  private normalizeEaNumber(input: string): string {
+    if (!input) {
+      throw new BadRequestException('Numéro EA obligatoire');
+    }
+
+    let trimmed = input.trim().toUpperCase();
+
+    if (trimmed.startsWith('EA')) {
+      trimmed = trimmed.substring(2);
+    }
+
+    if (!/^\d{6}$/.test(trimmed)) {
+      throw new BadRequestException(
+        'Le numéro EA doit contenir 6 chiffres (ex: 250001).',
+      );
+    }
+
+    return `EA${trimmed}`;
   }
 }

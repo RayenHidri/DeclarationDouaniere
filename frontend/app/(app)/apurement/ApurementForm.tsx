@@ -1,7 +1,28 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import type { SaOption, EaOption } from './page';
+
+type SaOption = {
+  id: string;
+  sa_number: string;
+  supplier_name: string | null;
+  due_date: string;
+  quantity_initial: number;
+  quantity_apured: number;
+  sa_remaining: number;
+  remaining_quantity: number;
+  quantity_unit: string;
+  scrap_percent?: number;
+};
+
+type EaOption = {
+  id: string;
+  ea_number: string;
+  export_date: string;
+  customer_name: string;
+  total_quantity: string | number;
+  quantity_unit: string;
+};
 
 type Props = {
   saOptions: SaOption[];

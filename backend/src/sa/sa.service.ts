@@ -239,13 +239,10 @@ export class SaService {
           : 0;
 
       const scrapPercent = Number.isFinite(scrapRaw) ? scrapRaw : 0;
-      const coef = 1 + scrapPercent / 100; // 1.05, 1.06, 1.08…
+      const t = scrapPercent / 100; // proportion (ex: 0.05)
 
-      // quantité EA max encore imputable (reste SA / coef)
-      const eaRemaining =
-        coef > 0
-          ? Number((saRemaining / coef).toFixed(3))
-          : saRemaining;
+      // quantité EA nette max imputable = saRemaining * (1 - t)
+      const eaRemaining = Number((saRemaining * (1 - t)).toFixed(3));
 
       // due_date → string yyyy-mm-dd
       const rawDue: any = (sa as any).due_date;
@@ -270,6 +267,100 @@ export class SaService {
         scrap_percent: scrapPercent,
       };
     });
+  }
+
+  async getForEa(idRaw: string) {
+    const sa = await this.findOneById(idRaw);
+
+    const initial = Number(sa.quantity_initial ?? 0);
+    const apured = Number(sa.quantity_apured ?? 0);
+
+    const saRemaining = Number(Math.max(initial - apured, 0).toFixed(3));
+
+    const scrapRaw = sa.family ? Number(sa.family.scrap_percent) : 0;
+    const scrapPercent = Number.isFinite(scrapRaw) ? scrapRaw : 0;
+    const eaRemaining = Number((saRemaining * (1 - scrapPercent / 100)).toFixed(3));
+
+    const supplierName = sa.supplier?.name ?? sa.supplier_name ?? null;
+
+    return {
+      id: sa.id,
+      sa_number: sa.sa_number,
+      supplier_name: supplierName,
+      family_id: sa.family ? sa.family.id : null,
+      family_label: sa.family ? sa.family.label : null,
+      quantity_initial: initial,
+      quantity_unit: sa.quantity_unit,
+      quantity_apured: apured,
+      sa_remaining: saRemaining,
+      max_export_quantity: eaRemaining,
+      description: sa.description ?? null,
+      suggested_product_ref: null,
+      suggested_product_desc: sa.description ?? null,
+    };
+  }
+
+  /* -------------------------
+     EXPORT .xlsx
+  ------------------------- */
+
+  async exportExcel(query: any): Promise<Buffer> {
+    // simple filters: status, from_date, to_date, family_id
+    const where: any = {};
+    if (query.status) where.status = query.status;
+    if (query.family_id) where.family = { id: query.family_id };
+
+    const items = await this.saRepo.find({
+      where,
+      relations: ['supplier', 'family'],
+      order: { declaration_date: 'DESC' },
+    });
+
+    // lazy import to avoid adding unused dependency if never called
+    const ExcelJS = require('exceljs');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('SA');
+
+    ws.addRow([
+      'id',
+      'sa_number',
+      'declaration_date',
+      'due_date',
+      'supplier_name',
+      'family',
+      'quantity_initial',
+      'scrap_quantity_ton',
+      'quantity_apured',
+      'remaining_quantity',
+      'status',
+      'invoice_amount',
+      'currency_code',
+      'amount_ds',
+    ]);
+
+    items.forEach((sa) => {
+      const mapped = this.mapSa(sa as any);
+      const remaining = Number(mapped.quantity_initial) - Number(mapped.quantity_apured);
+      ws.addRow([
+        mapped.id,
+        mapped.sa_number,
+        mapped.declaration_date,
+        mapped.due_date,
+        mapped.supplier_name,
+        mapped.family_label,
+        mapped.quantity_initial,
+        mapped.scrap_quantity_ton,
+        mapped.quantity_apured,
+        Number(remaining.toFixed(3)),
+        mapped.status,
+        mapped.invoice_amount,
+        mapped.currency_code,
+        mapped.amount_ds,
+      ]);
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    return Buffer.from(buf);
   }
 
   /* -------------------------
