@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 export function LogoutButton() {
   const router = useRouter();
@@ -20,13 +21,14 @@ export function LogoutButton() {
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={handleLogout}
       disabled={loading}
-      className="text-sm text-slate-600 hover:text-red-600 disabled:opacity-60"
+      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
     >
       {loading ? 'Déconnexion…' : 'Déconnexion'}
-    </button>
+    </Button>
   );
 }

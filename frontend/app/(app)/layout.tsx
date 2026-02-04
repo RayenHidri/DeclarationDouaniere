@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LogoutButton } from './LogoutButton';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export default async function AppLayout({
   children,
@@ -16,70 +18,78 @@ export default async function AppLayout({
     redirect('/auth/login');
   }
 
+  // Styles communs pour les liens de navigation
+  const navLinkClass =
+    'text-sm font-medium text-muted-foreground transition-colors hover:text-primary';
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          {/* Logo / titre appli */}
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-              SAE
-            </span>
-            <span className="text-sm font-medium text-slate-700">
-              Suivi SA / EA
-            </span>
+    <div className="min-h-screen bg-muted/40 font-sans antialiased">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-16 items-center px-4">
+
+          {/* Logo / Brand */}
+          <div className="mr-8 flex items-center gap-2">
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="size-5"
+              >
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
+            </div>
+            <div className="flex flex-col gap-0.5 leading-none">
+              <span className="font-semibold tracking-tight">SAE</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                Suivi Douane
+              </span>
+            </div>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation Principale */}
           <nav className="flex items-center gap-6 text-sm">
-            {/* Bloc navigation métier */}
-            <div className="flex items-center gap-4">
-              <Link href="/sa" className="text-slate-700 hover:text-blue-600">
-                SA
-              </Link>
-              <Link href="/ea" className="text-slate-700 hover:text-blue-600">
-                EA
-              </Link>
-              <Link
-                href="/apurement"
-                className="text-slate-700 hover:text-blue-600"
-              >
-                Apurement
-              </Link>
-            </div>
+            <Link href="/sa" className={navLinkClass}>
+              SA
+            </Link>
+            <Link href="/ea" className={navLinkClass}>
+              EA
+            </Link>
+            <Link href="/apurement" className={navLinkClass}>
+              Apurement
+            </Link>
+          </nav>
 
-            {/* séparateur */}
-            <div className="h-5 w-px bg-slate-200" />
+          {/* Séparateur flexible pour pousser le reste à droite */}
+          <div className="flex-1" />
 
-            {/* Bloc référentiel */}
-            <div className="flex items-center gap-3 text-xs">
-              <span className="uppercase tracking-wide text-slate-400">
+          {/* Navigation Secondaire (Référentiels) + User */}
+          <div className="flex items-center gap-4">
+            <nav className="flex items-center gap-4 text-sm border-r pr-4 mr-1 border-border/50">
+              <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider hidden md:inline-block">
                 Référentiel
               </span>
-              <Link
-                href="/suppliers"
-                className="text-slate-700 hover:text-blue-600"
-              >
+              <Link href="/suppliers" className={navLinkClass}>
                 Fournisseurs
               </Link>
-              <Link
-                href="/customers"
-                className="text-slate-700 hover:text-blue-600"
-              >
+              <Link href="/customers" className={navLinkClass}>
                 Clients
               </Link>
-            </div>
-
-            {/* séparateur */}
-            <div className="h-5 w-px bg-slate-200" />
-
-            {/* Déconnexion */}
+            </nav>
             <LogoutButton />
-          </nav>
+          </div>
         </div>
       </header>
 
-      <main className="bg-slate-50">{children}</main>
+      <main className="container mx-auto py-6 px-4">
+        {children}
+      </main>
     </div>
   );
 }

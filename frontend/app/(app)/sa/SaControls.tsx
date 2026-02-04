@@ -1,6 +1,9 @@
 'use client';
 
-export default function SaControls() {
+import { Button } from '@/components/ui/button';
+
+type Props = { email: string | null, roles: string[] };
+export default function SaControls({ email, roles }: Props) {
   async function handleExport() {
     try {
       const res = await fetch('/api/sa/export');
@@ -23,19 +26,24 @@ export default function SaControls() {
 
   return (
     <div className="flex items-center gap-2">
-      <a
-        href="/sa/new"
-        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-      >
-        Nouvelle SA
-      </a>
-
-      <button
+      {/* Only show add SA for achat@intermetal.com or ACHAT/ADMIN role */}
+      {(
+        email === 'achat@intermetal.com' ||
+        (roles && (roles.includes('ACHAT') || roles.includes('ADMIN')))
+      ) && (
+          <a href="/sa/new">
+            <Button size="sm">
+              Nouvelle SA
+            </Button>
+          </a>
+        )}
+      <Button
+        variant="outline"
+        size="sm"
         onClick={handleExport}
-        className="rounded-md border px-3 py-1.5 text-sm font-medium"
       >
         Exporter Excel
-      </button>
+      </Button>
     </div>
   );
 }

@@ -56,7 +56,7 @@ export default function ApurementPage() {
           console.error('Erreur /api/sa/eligible:', res.status, data);
           throw new Error(
             data?.message ||
-              `Erreur chargement SA éligibles (HTTP ${res.status})`,
+            `Erreur chargement SA éligibles (HTTP ${res.status})`,
           );
         }
 
@@ -78,7 +78,7 @@ export default function ApurementPage() {
     const loadEa = async () => {
       try {
         setLoadingEa(true);
-        const res = await fetch('/api/ea', { cache: 'no-store' });
+        const res = await fetch('/api/ea?unique=true', { cache: 'no-store' });
         let data: any = null;
         try {
           data = await res.json();
@@ -170,7 +170,7 @@ export default function ApurementPage() {
         console.error('Erreur création apurement:', res.status, data);
         setErrorMsg(
           data?.message ||
-            `Erreur lors de l'enregistrement de l'apurement (HTTP ${res.status}).`,
+          `Erreur lors de l'enregistrement de l'apurement (HTTP ${res.status}).`,
         );
         return;
       }

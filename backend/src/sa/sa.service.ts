@@ -4,14 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-  import { In, Repository } from 'typeorm';
-  import { SaDeclaration } from './sa-declaration.entity';
-  import { CreateSaDto } from './dto/create-sa.dto';
-  import { UpdateSaDto } from './dto/update-sa.dto';
-  import { User } from '../users/user.entity';
-  import { SaEligibleDto } from './dto/sa-eligible.dto';
-  import { SaFamily } from './sa-family.entity';
-  import { Supplier } from '../suppliers/supplier.entity';
+import { In, Repository } from 'typeorm';
+import { SaDeclaration } from './sa-declaration.entity';
+import { CreateSaDto } from './dto/create-sa.dto';
+import { UpdateSaDto } from './dto/update-sa.dto';
+import { User } from '../users/user.entity';
+import { SaEligibleDto } from './dto/sa-eligible.dto';
+import { SaFamily } from './sa-family.entity';
+import { Supplier } from '../suppliers/supplier.entity';
 
 @Injectable()
 export class SaService {
@@ -22,7 +22,7 @@ export class SaService {
     private readonly familyRepo: Repository<SaFamily>,
     @InjectRepository(Supplier)
     private readonly supplierRepo: Repository<Supplier>,
-  ) {}
+  ) { }
 
   /* -------------------------
      LISTE SA
@@ -265,6 +265,7 @@ export class SaService {
         remaining_quantity: eaRemaining,
         quantity_unit: sa.quantity_unit,
         scrap_percent: scrapPercent,
+        family_id: sa.family?.id || null,
       };
     });
   }
@@ -322,40 +323,30 @@ export class SaService {
     const ws = wb.addWorksheet('SA');
 
     ws.addRow([
-      'id',
-      'sa_number',
-      'declaration_date',
-      'due_date',
-      'supplier_name',
-      'family',
-      'quantity_initial',
-      'scrap_quantity_ton',
-      'quantity_apured',
-      'remaining_quantity',
-      'status',
-      'invoice_amount',
-      'currency_code',
-      'amount_ds',
+      'N° SA',
+      'Fournisseur',
+      'Déclaration',
+      'Échéance',
+      'Quantité',
+      'Apurée',
+      'Famille',
+      'Montant DS',
+      'Statut',
     ]);
 
     items.forEach((sa) => {
       const mapped = this.mapSa(sa as any);
-      const remaining = Number(mapped.quantity_initial) - Number(mapped.quantity_apured);
+      const pct = mapped.quantity_initial > 0 ? Math.round((mapped.quantity_apured / mapped.quantity_initial) * 100) : 0;
       ws.addRow([
-        mapped.id,
         mapped.sa_number,
+        mapped.supplier_name,
         mapped.declaration_date,
         mapped.due_date,
-        mapped.supplier_name,
-        mapped.family_label,
-        mapped.quantity_initial,
-        mapped.scrap_quantity_ton,
-        mapped.quantity_apured,
-        Number(remaining.toFixed(3)),
+        `${mapped.quantity_initial} ${mapped.quantity_unit}`,
+        `${mapped.quantity_apured} ${mapped.quantity_unit} (${pct}%)`,
+        mapped.family_label ?? '',
+        mapped.amount_ds != null ? `${mapped.amount_ds} DS` : '',
         mapped.status,
-        mapped.invoice_amount,
-        mapped.currency_code,
-        mapped.amount_ds,
       ]);
     });
 

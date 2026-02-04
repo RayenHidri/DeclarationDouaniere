@@ -1,6 +1,9 @@
 'use client';
 
-export default function EaControls() {
+import { Button } from '@/components/ui/button';
+
+type Props = { email: string | null, roles: string[] };
+export default function EaControls({ email, roles }: Props) {
   async function handleExport() {
     try {
       const res = await fetch('/api/ea/export');
@@ -22,19 +25,24 @@ export default function EaControls() {
 
   return (
     <div className="flex items-center gap-2">
-      <a
-        href="/ea/new"
-        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-      >
-        Nouvelle EA
-      </a>
-
-      <button
+      {/* Only show add EA for export@intermetal.com or EXPORT/ADMIN role */}
+      {(
+        email === 'export@intermetal.com' ||
+        (roles && (roles.includes('EXPORT') || roles.includes('ADMIN')))
+      ) && (
+          <a href="/ea/new">
+            <Button size="sm">
+              Nouvelle EA
+            </Button>
+          </a>
+        )}
+      <Button
+        variant="outline"
+        size="sm"
         onClick={handleExport}
-        className="rounded-md border px-3 py-1.5 text-sm font-medium"
       >
         Exporter Excel
-      </button>
+      </Button>
     </div>
   );
 }

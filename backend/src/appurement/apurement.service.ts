@@ -22,7 +22,7 @@ export class ApurementService {
 
     @InjectRepository(EaDeclaration)
     private readonly eaRepo: Repository<EaDeclaration>,
-  ) {}
+  ) { }
 
   /**
    * dto.quantity = quantité EA (en TONNES) à affecter sur cette SA
@@ -183,31 +183,74 @@ export class ApurementService {
 
     const allocations = await this.allocRepo.find({
       where: { ea_id: eaId.toString() as any },
-      relations: ['sa'],
+      relations: ['sa', 'sa.family'],
       order: { created_at: 'ASC' },
     });
 
-    return allocations.map((a) => ({
-      id: a.id,
-      quantity: Number(a.quantity), // quantité consommée sur SA
-      created_at: a.created_at,
-      sa: a.sa && {
-        id: a.sa.id,
-        sa_number: a.sa.sa_number,
-        supplier_name: a.sa.supplier_name,
-        due_date: a.sa.due_date,
-        quantity_initial: Number(a.sa.quantity_initial),
-        quantity_apured: Number(a.sa.quantity_apured),
-        quantity_unit: a.sa.quantity_unit,
-      },
-    }));
+    return allocations.map((a) => {
+      const quantity = Number(a.quantity);
+      let scrapPercent = 0;
+      if (a.sa?.family?.scrap_percent) {
+        scrapPercent = Number(a.sa.family.scrap_percent);
+      }
+
+      // Calcul du déchet pour cette allocation spécifique
+      const scrapQuantity = scrapPercent > 0
+        ? (quantity * (scrapPercent / 100)) / (1 - scrapPercent / 100)
+        : 0;
+
+      return {
+        id: a.id,
+        quantity, // quantité consommée sur SA
+        scrap_quantity: Number(scrapQuantity.toFixed(3)),
+        created_at: a.created_at,
+        sa: a.sa && {
+          id: a.sa.id,
+          sa_number: a.sa.sa_number,
+          supplier_name: a.sa.supplier_name,
+          due_date: a.sa.due_date,
+          quantity_initial: Number(a.sa.quantity_initial),
+          quantity_apured: Number(a.sa.quantity_apured),
+          quantity_unit: a.sa.quantity_unit,
+          description: a.sa.description,
+          family_id: a.sa.family?.id || null,
+          family_name: a.sa.family?.label || null,
+        },
+      };
+    });
   }
-  
+
   async hasAllocationsForEa(eaIdRaw: string): Promise<boolean> {
     const eaId = eaIdRaw.toString();
     const count = await this.allocRepo.count({
       where: { ea_id: eaId as any },
     });
     return count > 0;
+  }
+
+  /** Récupère la première allocation pour une EA (pour affichage dans la liste) */
+  async getFirstAllocationForEa(eaId: string) {
+    const allocation = await this.allocRepo.findOne({
+      where: { ea_id: eaId as any },
+      relations: ['sa', 'sa.supplier'],
+      order: { created_at: 'ASC' },
+    });
+
+    if (!allocation) return null;
+
+    return {
+      id: allocation.id,
+      quantity: Number(allocation.quantity),
+      created_at: allocation.created_at,
+      sa: allocation.sa && {
+        id: allocation.sa.id,
+        sa_number: allocation.sa.sa_number,
+        supplier_name: allocation.sa.supplier?.name ?? allocation.sa.supplier_name,
+        due_date: allocation.sa.due_date,
+        quantity_initial: Number(allocation.sa.quantity_initial),
+        quantity_apured: Number(allocation.sa.quantity_apured),
+        quantity_unit: allocation.sa.quantity_unit,
+      },
+    };
   }
 }

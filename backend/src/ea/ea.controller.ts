@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { EaService } from './ea.service';
@@ -20,11 +21,11 @@ import { User } from '../users/user.entity';
 @Controller('ea')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EaController {
-  constructor(private readonly eaService: EaService) {}
+  constructor(private readonly eaService: EaService) { }
 
   @Get()
-  async findAll() {
-    return this.eaService.findAll();
+  async findAll(@Query() query: any) {
+    return this.eaService.findAll(query);
   }
 
   @Get(':id')

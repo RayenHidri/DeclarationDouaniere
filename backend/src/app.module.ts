@@ -33,4 +33,4 @@ import { ExportModule } from './export/export.module';
     ExportModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

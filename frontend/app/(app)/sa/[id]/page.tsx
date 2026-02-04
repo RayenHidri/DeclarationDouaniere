@@ -2,6 +2,9 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 type SaDetail = {
   id: string;
@@ -158,153 +161,154 @@ export default async function SaDetailPage({ params }: SaDetailPageProps) {
 
   // -------- Rendu --------
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <Link
-        href="/sa"
-        className="mb-2 inline-block text-xs text-blue-600 hover:underline"
-      >
-        ← Retour à la liste
+    <div className="mx-auto max-w-5xl space-y-6 pt-6">
+      <Link href="/sa">
+        <Button variant="ghost" size="sm" className="gap-1 pl-0 text-muted-foreground">
+          ← Retour à la liste
+        </Button>
       </Link>
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">
-            SA {sa.sa_number ?? ''}
-          </h1>
-          <p className="text-sm text-gray-600">
-            Fournisseur : <strong>{supplierName}</strong>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">
+              SA {sa.sa_number ?? ''}
+            </h1>
+            <Badge variant={
+              sa.status === 'FULLY_APURED' ? 'success' :
+                sa.status === 'PARTIALLY_APURED' ? 'warning' :
+                  sa.status === 'OPEN' ? 'info' : 'secondary'
+            }>
+              {formatStatus(sa.status)}
+            </Badge>
+          </div>
+
+          <p className="mt-1 text-lg text-muted-foreground">
+            {supplierName}
           </p>
           {sa.family_label && (
-            <p className="text-xs text-gray-500">
-              Famille : <strong>{sa.family_label}</strong>{' '}
-              {scrapPercent
-                ? `(${scrapPercent.toLocaleString('fr-FR')} % déchet)`
-                : ''}
-            </p>
+            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Famille :</span> {sa.family_label}
+              {scrapPercent > 0 && (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                  {scrapPercent.toLocaleString('fr-FR')}% déchet
+                </span>
+              )}
+            </div>
           )}
-        </div>
-        <div>
-          <span
-            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${statusColor(
-              sa.status,
-            )}`}
-          >
-            Statut : {formatStatus(sa.status)}
-          </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-        <div className="space-y-2">
-          <h2 className="font-semibold text-gray-900">Informations</h2>
-          <p>
-            <span className="text-gray-500">N° SA : </span>
-            <span className="font-medium">{sa.sa_number}</span>
-          </p>
-          <p>
-            <span className="text-gray-500">Régime : </span>
-            <span>{sa.regime_code ?? '-'}</span>
-          </p>
-          <p>
-            <span className="text-gray-500">Date déclaration : </span>
-            <span>{sa.declaration_date}</span>
-          </p>
-          <p>
-            <span className="text-gray-500">Date échéance : </span>
-            <span>{sa.due_date}</span>
-          </p>
-          {sa.description && (
-            <p>
-              <span className="text-gray-500">Description : </span>
-              <span>{sa.description}</span>
-            </p>
-          )}
-        </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Informations Générales */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Informations Générales</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">N° SA</span>
+              <span className="font-medium">{sa.sa_number}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Régime</span>
+              <span>{sa.regime_code ?? '-'}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Date déclaration</span>
+              <span>{sa.declaration_date}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Date échéance</span>
+              <span>{sa.due_date}</span>
+            </div>
+            {sa.description && (
+              <div className="grid grid-cols-2 gap-1">
+                <span className="text-muted-foreground">Description</span>
+                <span>{sa.description}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="space-y-2">
-          <h2 className="font-semibold text-gray-900">Quantités</h2>
-          <p>
-            <span className="text-gray-500">Quantité initiale : </span>
-            <span>
-              {initial.toLocaleString('fr-FR', {
-                maximumFractionDigits: 3,
-              })}{' '}
-              {sa.quantity_unit}
-            </span>
-          </p>
-          <p>
-            <span className="text-gray-500">Quantité apurée : </span>
-            <span>
-              {apured.toLocaleString('fr-FR', {
-                maximumFractionDigits: 3,
-              })}{' '}
-              {sa.quantity_unit}
-            </span>
-          </p>
-          <p>
-            <span className="text-gray-500">Reste SA : </span>
-            <span>
-              {remaining.toLocaleString('fr-FR', {
-                maximumFractionDigits: 3,
-              })}{' '}
-              {sa.quantity_unit}
-            </span>
-          </p>
-          <p>
-            <span className="text-gray-500">Droit déchet théorique : </span>
-            <span>
-              {scrapQty.toLocaleString('fr-FR', {
-                maximumFractionDigits: 3,
-              })}{' '}
-              {sa.quantity_unit}
-              {scrapPercent
-                ? ` (${scrapPercent.toLocaleString('fr-FR')} %)`
-                : ''}
-            </span>
-          </p>
-        </div>
+        {/* Quantités */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Suivi des Quantités</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Progression Apurement</span>
+                <span className="font-medium">{Math.min(100, Math.round((apured / initial) * 100))}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{ width: `${Math.min(100, (apured / initial) * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Initiale</p>
+                <p className="text-lg font-semibold">{initial.toLocaleString('fr-FR', { maximumFractionDigits: 3 })} <span className="text-sm font-normal text-muted-foreground">{sa.quantity_unit}</span></p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Apurée</p>
+                <p className="text-lg font-semibold text-emerald-600">{apured.toLocaleString('fr-FR', { maximumFractionDigits: 3 })} <span className="text-sm font-normal text-muted-foreground">{sa.quantity_unit}</span></p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Restante</p>
+                <p className="text-lg font-semibold text-amber-600">{remaining.toLocaleString('fr-FR', { maximumFractionDigits: 3 })} <span className="text-sm font-normal text-muted-foreground">{sa.quantity_unit}</span></p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Droit Déchet</p>
+                <p className="text-lg font-semibold">{scrapQty.toLocaleString('fr-FR', { maximumFractionDigits: 3 })} <span className="text-sm font-normal text-muted-foreground">{sa.quantity_unit}</span></p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-        <div className="space-y-2">
-          <h2 className="font-semibold text-gray-900">Montant facture</h2>
-          <p>
-            <span className="text-gray-500">Montant : </span>
-            <span>
-              {invoiceAmount !== null
-                ? invoiceAmount.toLocaleString('fr-FR', {
-                    maximumFractionDigits: 3,
-                  })
-                : '-'}{' '}
-              {sa.currency_code ?? ''}
-            </span>
-          </p>
-          <p>
-            <span className="text-gray-500">Taux de change : </span>
-            <span>
-              {fxRate !== null
-                ? fxRate.toLocaleString('fr-FR', {
-                    maximumFractionDigits: 6,
-                  })
-                : '-'}
-            </span>
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="font-semibold text-gray-900">Montant DS</h2>
-          <p>
-            <span className="text-gray-500">Montant DS : </span>
-            <span>
-              {amountDs !== null
-                ? amountDs.toLocaleString('fr-FR', {
-                    maximumFractionDigits: 3,
-                  })
-                : '-'}{' '}
-              DS
-            </span>
-          </p>
-        </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Données Financières</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-1">
+              <p className="text-muted-foreground">Montant Facture</p>
+              <p className="font-medium">
+                {invoiceAmount !== null
+                  ? invoiceAmount.toLocaleString('fr-FR', { maximumFractionDigits: 3 })
+                  : '-'
+                } {sa.currency_code}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-muted-foreground">Taux de Change</p>
+              <p className="font-medium">
+                {fxRate !== null
+                  ? fxRate.toLocaleString('fr-FR', { maximumFractionDigits: 6 })
+                  : '-'
+                }
+              </p>
+            </div>
+            <div className="col-span-2 pt-2 border-t">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold">Montant DS</span>
+                <span className="text-lg font-bold">
+                  {amountDs !== null
+                    ? amountDs.toLocaleString('fr-FR', { maximumFractionDigits: 3 })
+                    : '-'
+                  } DS
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

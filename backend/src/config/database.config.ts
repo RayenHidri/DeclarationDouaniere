@@ -13,9 +13,9 @@ export function getTypeOrmConfig(): TypeOrmModuleOptions {
     synchronize: false,
     logging: isDev,
     entities: [__dirname + '/../**/*.entity.{ts,js}'],
-    options : {
-        encrypt: false,
-        trustServerCertificate: true
-        },
-    };
+    options: {
+      encrypt: false,
+      trustServerCertificate: true
+    },
+  };
 }

@@ -1,3 +1,7 @@
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { EaStatus } from '../EaTable';
@@ -18,12 +22,14 @@ type EaDetail = {
   quantity_unit: string;
   created_at: string;
   updated_at: string;
+  family_id: string | null;
 };
 
 type SaAllocationForEaDetail = {
   id: string;
   quantity: number;
   created_at: string;
+  scrap_quantity?: number;
   sa?: {
     id: string;
     sa_number: string;
@@ -32,6 +38,9 @@ type SaAllocationForEaDetail = {
     quantity_initial: number;
     quantity_apured: number;
     quantity_unit: string;
+    family_name?: string | null;
+    description?: string | null;
+    family_id?: string | null;
   };
 };
 
@@ -129,157 +138,195 @@ export default async function EaDetailPage({
   const remainingOnEa = ea.total_quantity - totalAllocatedOnEa;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      <a
-        href="/ea"
-        className="mb-4 inline-block text-sm text-blue-600 hover:underline"
-      >
-        ← Retour à la liste
-      </a>
+    <div className="mx-auto max-w-5xl space-y-6 pt-6">
+      <Link href="/ea">
+        <Button variant="ghost" size="sm" className="gap-1 pl-0 text-muted-foreground">
+          ← Retour à la liste
+        </Button>
+      </Link>
 
-      <h1 className="mb-2 text-2xl font-semibold text-slate-900">
-        EA {ea.ea_number}
-      </h1>
-      <p className="mb-4 text-sm text-slate-500">
-        Client : {ea.customer_name}
-      </p>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg bg-white p-4 shadow-sm">
-          <h2 className="mb-2 text-sm font-semibold text-slate-700">
-            Informations
-          </h2>
-          <dl className="space-y-1 text-sm text-slate-700">
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Régime</dt>
-              <dd>{ea.regime_code}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Date export</dt>
-              <dd>{ea.export_date}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Pays destination</dt>
-              <dd>{ea.destination_country ?? '-'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Statut</dt>
-              <dd>{ea.status}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="rounded-lg bg-white p-4 shadow-sm">
-          <h2 className="mb-2 text-sm font-semibold text-slate-700">
-            Quantité
-          </h2>
-          <dl className="space-y-1 text-sm text-slate-700">
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Totale</dt>
-              <dd>
-                {ea.total_quantity.toLocaleString('fr-FR')}{' '}
-                {ea.quantity_unit}
-              </dd>
-            </div>
-          </dl>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">
+              EA {ea.ea_number}
+            </h1>
+            <Badge variant={
+              ea.status === 'SUBMITTED' ? 'success' :
+                ea.status === 'CANCELLED' ? 'secondary' : 'default'
+            }>
+              {ea.status === 'SUBMITTED' ? 'Soumise' : ea.status === 'CANCELLED' ? 'Annulée' : ea.status}
+            </Badge>
+          </div>
+          <p className="mt-1 text-lg text-muted-foreground">
+            Client : {ea.customer_name}
+          </p>
         </div>
       </div>
 
-      {ea.product_desc && (
-        <div className="mt-4 rounded-lg bg-white p-4 shadow-sm">
-          <h2 className="mb-2 text-sm font-semibold text-slate-700">
-            Description produit
-          </h2>
-          <p className="text-sm text-slate-700">{ea.product_desc}</p>
-        </div>
-      )}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Informations Générales */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Informations Générales</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Régime</span>
+              <span className="font-medium">{ea.regime_code}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Date export</span>
+              <span>{ea.export_date}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Pays destination</span>
+              <span>{ea.destination_country ?? '-'}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quantités */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quantité</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Totale</span>
+              <span className="text-lg font-semibold">{ea.total_quantity.toLocaleString('fr-FR')} <span className="text-sm font-normal text-muted-foreground">{ea.quantity_unit}</span></span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Article Exporté</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Référence:</span>
+            <span className="text-sm font-medium">{ea.product_ref || '-'}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Désignation:</span>
+            <p className="text-base font-medium text-foreground">{ea.product_desc || '-'}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Section Apurement des SA */}
-      <div className="mt-6 rounded-lg bg-white p-4 shadow-sm">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700">
-            Apurement des SA
-          </h2>
-          <div className="text-xs text-slate-500">
-            <div>
-              Quantité EA totale :{' '}
-              {ea.total_quantity.toLocaleString('fr-FR')}{' '}
-              {ea.quantity_unit}
-            </div>
-            <div>
-              Déjà imputée :{' '}
-              {totalAllocatedOnEa.toLocaleString('fr-FR')}{' '}
-              {ea.quantity_unit}
-            </div>
-            <div>
-              Non imputée :{' '}
-              {remainingOnEa.toLocaleString('fr-FR')}{' '}
-              {ea.quantity_unit}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Apurement des SA</CardTitle>
+            <div className="text-xs text-muted-foreground flex gap-4">
+              <div>
+                Quantité EA totale :{' '}
+                <span className="font-medium text-foreground">{ea.total_quantity.toLocaleString('fr-FR')} {ea.quantity_unit}</span>
+              </div>
+              <div>
+                Déjà imputée :{' '}
+                <span className="font-medium text-emerald-600">{totalAllocatedOnEa.toLocaleString('fr-FR')} {ea.quantity_unit}</span>
+              </div>
+              <div>
+                Non imputée :{' '}
+                <span className="font-medium text-amber-600">{remainingOnEa.toLocaleString('fr-FR')} {ea.quantity_unit}</span>
+              </div>
             </div>
           </div>
-        </div>
-
-        {allocations.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Cette EA n&apos;est pas encore imputée sur des SA.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium text-slate-600">
-                    N° SA
-                  </th>
-                  <th className="px-3 py-2 text-left font-medium text-slate-600">
-                    Fournisseur
-                  </th>
-                  <th className="px-3 py-2 text-left font-medium text-slate-600">
-                    Échéance
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium text-slate-600">
-                    Quantité imputée
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium text-slate-600">
-                    Quantité SA initiale
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {allocations.map((a) => {
-                  if (!a.sa) return null;
-                  return (
-                    <tr key={a.id}>
-                      <td className="px-3 py-2">
-                        <a
-                          href={`/sa/${a.sa.id}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {a.sa.sa_number}
-                        </a>
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {a.sa.supplier_name}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {a.sa.due_date}
-                      </td>
-                      <td className="px-3 py-2 text-right text-slate-700">
-                        {a.quantity.toLocaleString('fr-FR')}{' '}
-                        {a.sa.quantity_unit}
-                      </td>
-                      <td className="px-3 py-2 text-right text-slate-700">
-                        {a.sa.quantity_initial.toLocaleString('fr-FR')}{' '}
-                        {a.sa.quantity_unit}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        </CardHeader>
+        <CardContent>
+          {allocations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Cette EA n&apos;est pas encore imputée sur des SA.
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-md border">
+              <table className="min-w-full divide-y divide-border text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                      N° SA
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                      Fournisseur
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                      Article
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                      Famille
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-muted-foreground">
+                      Quantité imputée
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-muted-foreground">
+                      Qté déchet
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium text-muted-foreground">
+                      Quantité SA initiale
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {allocations.map((a, idx) => {
+                    if (!a.sa) return null;
+                    const isFirstRow = idx === 0;
+                    return (
+                      <tr key={a.id} className="hover:bg-muted/50">
+                        <td className="px-3 py-2">
+                          <Link
+                            href={`/sa/${a.sa.id}`}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            {a.sa.sa_number}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                          {a.sa.supplier_name}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-foreground">{ea.product_ref || '-'}</span>
+                            {isFirstRow && (
+                              <span className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={ea.product_desc || ''}>
+                                {ea.product_desc}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            {a.sa.family_name || '-'}
+                            {ea.family_id && a.sa.family_id && String(ea.family_id) !== String(a.sa.family_id) && (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800" title="Cette SA appartient à une famille différente de l'EA">
+                                mismatch
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right text-foreground font-medium">
+                          {a.quantity.toLocaleString('fr-FR')}{' '}
+                          {a.sa.quantity_unit}
+                        </td>
+                        <td className="px-3 py-2 text-right text-emerald-600 font-medium whitespace-nowrap">
+                          {a.scrap_quantity ? `+${a.scrap_quantity.toLocaleString('fr-FR')}` : '-'}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {a.sa.quantity_initial.toLocaleString('fr-FR')}{' '}
+                          {a.sa.quantity_unit}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

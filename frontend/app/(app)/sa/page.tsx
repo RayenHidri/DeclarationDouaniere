@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SaTable, SaItem } from './SaTable';
 import SaControls from './SaControls';
+import DebugUserRole from '../debugUserRole';
+import { decodeJwt } from '../decodeJwt';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -79,9 +81,17 @@ async function loadSa(): Promise<SaItem[]> {
 
 export default async function SaPage() {
   const items = await loadSa();
-
+  const cookieStore = await cookies();
+  const token = cookieStore.get('access_token')?.value;
+  let email = null, roles: string[] = [];
+  if (token) {
+    const decoded = decodeJwt(token);
+    email = decoded.email;
+    roles = decoded.roles;
+  }
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-6">
+      <DebugUserRole email={email} roles={roles} />
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Déclarations SA</h1>
@@ -89,14 +99,10 @@ export default async function SaPage() {
             Suivi des admissions temporaires (SA) et de leur apurement.
           </p>
         </div>
-
         <div>
-          {/* Controls moved to client component */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <SaControls />
+          <SaControls email={email} roles={roles} />
         </div>
       </div>
-
       <SaTable items={items} />
     </div>
   );

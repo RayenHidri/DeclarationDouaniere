@@ -6,9 +6,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export async function GET(
   _req: NextRequest,
-  context: any,
+  props: { params: Promise<{ id: string }> },
 ) {
-  const id = context.params?.id;
+  const params = await props.params;
+  const id = params.id;
 
   if (!id || id === 'undefined' || id === 'null') {
     return NextResponse.json({ message: 'Invalid SA id in route' }, { status: 400 });

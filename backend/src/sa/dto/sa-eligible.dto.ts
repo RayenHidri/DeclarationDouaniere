@@ -17,4 +17,6 @@ export class SaEligibleDto {
 
   // Pour information (5, 6, 8…)
   scrap_percent: number;
+
+  family_id?: string | null;
 }

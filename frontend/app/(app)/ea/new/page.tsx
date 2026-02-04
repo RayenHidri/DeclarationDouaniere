@@ -15,6 +15,7 @@ type EligibleSa = {
   remaining_quantity: number; // quantité EA max imputable
   quantity_unit: string;
   scrap_percent?: number;
+  family_id?: string | null;
 };
 
 type CustomerOption = {
@@ -57,6 +58,9 @@ export default function EaNewPage() {
   const [linkedSaId, setLinkedSaId] = useState('');
   const [linkedQuantity, setLinkedQuantity] = useState<number | ''>('');
 
+  // Nouveau state pour la liste des SA liées
+  const [linkedSas, setLinkedSas] = useState<{ sa_id: string; quantity: number; sa_number: string; remaining_max: number }[]>([]);
+
   const [loadingSa, setLoadingSa] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -79,7 +83,7 @@ export default function EaNewPage() {
           console.error('Erreur /api/customers:', res.status, data);
           throw new Error(
             data?.message ||
-              `Erreur chargement des clients (HTTP ${res.status})`,
+            `Erreur chargement des clients (HTTP ${res.status})`,
           );
         }
 
@@ -122,7 +126,7 @@ export default function EaNewPage() {
           console.error('Erreur /api/sa/eligible:', res.status, data);
           throw new Error(
             data?.message ||
-              `Erreur chargement SA éligibles (HTTP ${res.status})`,
+            `Erreur chargement SA éligibles (HTTP ${res.status})`,
           );
         }
 
@@ -170,6 +174,7 @@ export default function EaNewPage() {
       setProductId('');
       setProductRef('');
       setProductDesc('');
+      setLinkedSas([]); // On vide le panier de SAs car la famille est différente
 
       // si on a déjà chargé cette famille, on utilise le cache local
       const cached = articlesCacheRef.current.get(familyId);
@@ -297,7 +302,7 @@ export default function EaNewPage() {
     }
 
     // Payload aligné avec le nouveau DTO :
-    const payload: any = {
+    const payload = {
       ea_number: eaNumber.trim(),
       export_date: exportDate,
       customer_id: customerId,
@@ -309,13 +314,11 @@ export default function EaNewPage() {
       quantity_unit: quantityUnit,
       family_id: familyId,
       product_id: productId,
+      linked_sas: linkedSas.map((s) => ({
+        sa_id: s.sa_id,
+        quantity: s.quantity,
+      })),
     };
-
-    // Lien SA optionnel : apurement auto
-    if (linkedSaId) {
-      payload.linked_sa_id = linkedSaId;
-      payload.linked_quantity = Number(linkedQuantity);
-    }
 
     try {
       setSubmitting(true);
@@ -333,7 +336,7 @@ export default function EaNewPage() {
         console.error('EA creation error:', data);
         setErrorMsg(
           data?.message ||
-            "Erreur lors de la création de l'EA (vérifier quantité / SA / client).",
+          "Erreur lors de la création de l'EA (vérifier quantité / SA / client).",
         );
         return;
       }
@@ -556,10 +559,10 @@ export default function EaNewPage() {
           </div>
         </section>
 
-        {/* Bloc Lien SA (optionnel) */}
+        {/* Bloc Lien SA (Composition Apurement) */}
         <section className="space-y-4 rounded-xl border border-gray-200 p-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-lg font-medium">Lien SA (optionnel)</h2>
+            <h2 className="text-lg font-medium">Composition (Lien SAs)</h2>
             {loadingSa && (
               <span className="text-xs text-gray-500">
                 Chargement des SA éligibles…
@@ -568,59 +571,143 @@ export default function EaNewPage() {
           </div>
 
           <p className="text-xs text-gray-500">
-            Si tu choisis une SA et une quantité, le système créera
-            automatiquement l&apos;apurement (avec le coefficient famille :
-            5&nbsp;% / 6&nbsp;% / 8&nbsp;%).
+            Ajoutez ici les SA qui composent cette exportation. La quantité totale sera calculée automatiquement.
           </p>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm">
-              SA à lier
-              <select
-                className="rounded-md border px-2 py-1 text-sm"
-                value={linkedSaId}
-                onChange={(e) => setLinkedSaId(e.target.value)}
-              >
-                <option value="">– Aucune (EA simple) –</option>
-                {eligibleSa.map((sa) => (
-                  <option key={sa.id} value={sa.id}>
-                    {sa.sa_number} • {sa.supplier_name ?? '—'} • Restant SA:{' '}
-                    {sa.sa_remaining} {sa.quantity_unit} • Max EA:{' '}
-                    {sa.remaining_quantity} {sa.quantity_unit}
-                  </option>
-                ))}
-              </select>
-            </label>
+          {/* Zone d'ajout */}
+          <div className="rounded-md bg-gray-50 p-3 mb-4 border border-gray-200">
+            <h3 className="text-sm font-medium mb-2">Ajouter une SA au panier</h3>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_150px_auto] items-end">
+              <label className="flex flex-col gap-1 text-xs">
+                SA disponible
+                <select
+                  className="rounded-md border px-2 py-1 text-sm bg-white"
+                  value={linkedSaId}
+                  onChange={(e) => {
+                    setLinkedSaId(e.target.value);
+                    setLinkedQuantity(''); // reset quantité input quand on change de SA
+                  }}
+                >
+                  <option value="">-- Choisir une SA --</option>
+                  {eligibleSa
+                    .filter(s => !familyId || String(s.family_id) === String(familyId))
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.sa_number} ({s.supplier_name}) — Reste EA: {s.remaining_quantity} {s.quantity_unit}
+                      </option>
+                    ))}
+                </select>
+              </label>
 
-            <label className="flex flex-col gap-1 text-sm">
-              Quantité EA à lier (TONNES)
-              <input
-                type="number"
-                step="0.001"
-                min={0}
-                className="rounded-md border px-2 py-1 text-sm"
-                value={linkedQuantity}
-                onChange={(e) =>
-                  setLinkedQuantity(
-                    e.target.value === ''
-                      ? ''
-                      : Number(e.target.value),
-                  )
-                }
-                disabled={!linkedSaId}
-              />
-              {linkedSaId && (
-                <span className="text-[11px] text-gray-500">
-                  Max EA imputable sur cette SA :{' '}
-                  {
-                    eligibleSa.find((s) => s.id === linkedSaId)
-                      ?.remaining_quantity
-                  }{' '}
-                  T.
-                </span>
-              )}
-            </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Quantité à imputer
+                <input
+                  type="number"
+                  step="0.001"
+                  min={0}
+                  className="rounded-md border px-2 py-1 text-sm"
+                  value={linkedQuantity}
+                  onChange={(e) => setLinkedQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="Ex: 25"
+                />
+              </label>
+
+              <button
+                type="button"
+                className="rounded-md bg-slate-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                disabled={!linkedSaId || !linkedQuantity || Number(linkedQuantity) <= 0}
+                onClick={() => {
+                  if (!linkedSaId || !linkedQuantity) return;
+                  const sa = eligibleSa.find(s => s.id === linkedSaId);
+                  if (!sa) return;
+
+                  // Vérif max imputable
+                  if (Number(linkedQuantity) > sa.remaining_quantity) {
+                    alert(`Quantité trop élevée ! Maximum : ${sa.remaining_quantity}`);
+                    return;
+                  }
+
+                  // Vérif doublon
+                  if (linkedSas.some(item => item.sa_id === linkedSaId)) {
+                    alert('Cette SA est déjà dans le panier.');
+                    return;
+                  }
+
+                  // Ajout au panier
+                  const newItem = {
+                    sa_id: linkedSaId,
+                    quantity: Number(linkedQuantity),
+                    sa_number: sa.sa_number,
+                    remaining_max: sa.remaining_quantity
+                  };
+
+                  const newList = [...linkedSas, newItem];
+                  setLinkedSas(newList);
+
+                  // Reset input
+                  setLinkedSaId('');
+                  setLinkedQuantity('');
+
+                  // Auto-calcul quantité totale
+                  const newTotal = newList.reduce((acc, item) => acc + item.quantity, 0);
+                  setTotalQuantity(Number(newTotal.toFixed(3)));
+                }}
+              >
+                Ajouter
+              </button>
+            </div>
           </div>
+
+          {/* Liste des SA ajoutées */}
+          {linkedSas.length > 0 ? (
+            <div className="overflow-hidden rounded-md border border-gray-200">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-700">
+                  <tr>
+                    <th className="px-3 py-2">SA</th>
+                    <th className="px-3 py-2 text-right">Quantité Imputée</th>
+                    <th className="px-3 py-2 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {linkedSas.map((item) => (
+                    <tr key={item.sa_id}>
+                      <td className="px-3 py-2 font-medium">{item.sa_number}</td>
+                      <td className="px-3 py-2 text-right font-mono text-blue-600">
+                        {item.quantity.toLocaleString('fr-FR')} T
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          type="button"
+                          className="text-red-600 hover:text-red-800 text-xs underline"
+                          onClick={() => {
+                            const newList = linkedSas.filter(x => x.sa_id !== item.sa_id);
+                            setLinkedSas(newList);
+                            // Recalcul total
+                            const newTotal = newList.reduce((acc, curr) => acc + curr.quantity, 0);
+                            setTotalQuantity(Number(newTotal.toFixed(3)));
+                          }}
+                        >
+                          Retirer
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-50 font-semibold">
+                    <td className="px-3 py-2 text-right">Total Calculé :</td>
+                    <td className="px-3 py-2 text-right text-slate-900 leading-none">
+                      {linkedSas.reduce((acc, i) => acc + i.quantity, 0).toLocaleString('fr-FR')} T
+                    </td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-400 italic text-center py-4 border-2 border-dashed border-gray-100 rounded-md">
+              Aucune SA liée pour le moment.
+            </div>
+          )}
         </section>
 
         <div className="flex justify-end gap-3">
